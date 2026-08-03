@@ -5,3 +5,6 @@ openai
 playwright
 pytesseract
 opencv-python-headless
+beautifulsoup4
+requests
+Pillow

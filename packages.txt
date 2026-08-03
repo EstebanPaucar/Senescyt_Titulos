@@ -1,2 +1,10 @@
+libnspr4
+libnss3
+libasound2
+libatk-bridge2.0-0
+libgtk-3-0
+libxcomposite1
+libxrandr2
+libgbm1
 tesseract-ocr
 tesseract-ocr-spa

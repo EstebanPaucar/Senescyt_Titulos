@@ -4,3 +4,4 @@ openpyxl
 openai
 playwright
 pytesseract
+opencv-python-headless

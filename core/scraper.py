@@ -18,10 +18,6 @@ if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 # ---------------------------------------------------------------
 
-# RUTA TESSERACT: Funciona en local. En la nube Streamlit usa la variable global de Linux automáticamente.
-if sys.platform == 'win32':
-    # Solo usará la ruta de Windows si detecta que estás en tu computadora local
-    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\teseract.exe'
 
 ARCHIVO_CACHE = "historial_auditorias.json"
 

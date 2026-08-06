@@ -16,6 +16,11 @@ import asyncio
 import sys
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    # Ruta forzada para tu PC local
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+else:
+    # RUTA FORZADA PARA EL SERVIDOR LINUX EN LA NUBE (Streamlit)
+    pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 # ---------------------------------------------------------------
 
 

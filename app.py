@@ -62,7 +62,7 @@ with pestaña_scraping:
         )
     with col_der:
         st.markdown("#### Configuración de Ejecución")
-        ver_nav = st.checkbox("👁️ Ver navegador en tiempo real (Modo Visual Slow-Mo)", value=False)
+        ver_nav = st.checkbox("👁️ Ver navegador en tiempo (Modo Visual Slow-Mo)", value=False)
         forzar_cache = st.checkbox("🔄 Forzar re-evaluación en web (Ignorar Caché del disco)", value=False)
         
     if archivo_scraping is not None:

@@ -75,7 +75,7 @@ def consultar_senescyt_web(page, cedula, log_callback=None):
     intentos_navegacion = 0
     max_intentos_navegacion = 6
     
-    l(f"--- INICIANDO AUDITORÍA WEB PARA CÉDULA: {cedula} ---")
+    l(f"--- INICIANDO PRUEBA NUCLEAR PARA CÉDULA: {cedula} ---")
     
     while len(muestras_obtenidas) < 3 and intentos_navegacion < max_intentos_navegacion:
         intentos_navegacion += 1

@@ -4,7 +4,6 @@ import pandas as pd
 from core.scraper import procesar_excel_completo
 from core.merger import unificar_excels_docentes
 import os
-import streamlit as st
 
 @st.cache_resource
 def instalar_navegadores():
@@ -81,6 +80,20 @@ with pestaña_scraping:
             if es_modo_reverificacion:
                 st.info("💡 **Modo Reverificar activo:** Se saltarán instantáneamente los docentes que ya tengan títulos y solo se consultará en vivo a los pendientes ('No registra').")
             
+            # --- CONSOLA DE LOGS EN UI ---
+            st.markdown("#### 🖥️ Consola de Ejecución en Vivo")
+            consola_ui = st.empty()
+            
+            if 'historial_logs' not in st.session_state:
+                st.session_state.historial_logs = []
+            st.session_state.historial_logs.clear()
+            
+            def registrar_log(mensaje):
+                """Añade el log al estado y actualiza el contenedor de código"""
+                st.session_state.historial_logs.append(f"> {mensaje}")
+                # Mostramos solo los últimos 15 mensajes para que no se sature la pantalla
+                consola_ui.code('\n'.join(st.session_state.historial_logs[-15:]), language='bash')
+            
             cont_barra = st.empty()
             barra_progreso = cont_barra.progress(0.0, text="Iniciando Chromium y Tesseract OCR...")
             
@@ -88,9 +101,11 @@ with pestaña_scraping:
                 barra_progreso.progress(min(porcentaje, 1.0), text=texto)
             
             try:
+                # OJO: Aquí pasamos registrar_log como log_callback
                 bytes_resultado, cache_actualizada = procesar_excel_completo(
                     archivo_bytes=archivo_scraping.getvalue(),
                     progress_callback=actualizar_ui,
+                    log_callback=registrar_log,
                     forzar_reevaluacion=forzar_cache,
                     ver_navegador=ver_nav,
                     reverificar_no_registra=es_modo_reverificacion
@@ -109,6 +124,7 @@ with pestaña_scraping:
             except Exception as e:
                 cont_barra.empty()
                 st.error(f"❌ Ocurrió un error en la extracción: {str(e)}")
+                registrar_log(f"ERROR CRÍTICO: {str(e)}")
     else:
         st.info("👆 Sube tu archivo Excel en el recuadro superior para activar el motor de scraping.")
 
@@ -183,13 +199,11 @@ with pestaña_ia:
     with col_ia2:
         st.markdown("#### Estado del Motor de Auditoría")
         
-        # Extraemos la clave silenciosamente desde el servidor
         try:
             api_key_input = st.secrets.get("OPENAI_API_KEY", None)
         except Exception:
             api_key_input = None
             
-        # Hardcodeamos el modelo internamente, el cliente no lo ve ni lo cambia
         modelo_select = "gpt-4o-mini"
         
         if api_key_input:
@@ -199,7 +213,6 @@ with pestaña_ia:
 
     if excel_para_ia is not None:
         st.markdown("---")
-        # Validación de seguridad: Comprobar que el servidor tiene la clave antes de ejecutar
         if not api_key_input:
             st.error("⚠️ Error Interno del Servidor: La API Key no ha sido configurada por el administrador en los secretos (st.secrets).")
         else:

@@ -90,17 +90,35 @@ with pestaña_scraping:
         if st.button("🚀 Enviar al Servidor de GitHub (5 Hilos)", key="btn_ejecutar_scraping", type="primary"):
             with st.spinner("Inyectando archivo en la cola de procesamiento..."):
                 try:
+                    df_temp = pd.read_excel(archivo_scraping)
+                    st.session_state['total_filas_a_procesar'] = len(df_temp)
+                    
                     # 🔒 CAPTURAMOS LA HUELLA DIGITAL (SHA) DEL ARCHIVO VIEJO
                     st.session_state['sha_anterior'] = obtener_sha_archivo()
                     
-                    # Subimos el nuevo lote a GitHub
-                    subir_a_github(archivo_scraping.getvalue(), "inputs/matriz_a_procesar.xlsx", "⏳ Nuevo lote de docentes subido por Streamlit")
+                    # 🛠️ TRUCO MAESTRO: Alterar el Excel sutilmente para forzar a GitHub Actions
+                    import openpyxl
+                    import time
+                    
+                    # Regresamos el puntero del archivo al inicio después de que Pandas lo leyó
+                    archivo_scraping.seek(0) 
+                    wb = openpyxl.load_workbook(archivo_scraping)
+                    ws = wb.active
+                    
+                    # Escribimos un sello de tiempo único en una celda muy lejana e invisible
+                    ws['ZZ1'] = f"Trigger: {time.time()}" 
+                    
+                    output_excel = io.BytesIO()
+                    wb.save(output_excel)
+                    bytes_a_subir = output_excel.getvalue()
+                    
+                    # Subimos el nuevo lote modificado a GitHub
+                    subir_a_github(bytes_a_subir, "inputs/matriz_a_procesar.xlsx", "⏳ Nuevo lote de docentes subido por Streamlit")
                     
                     st.success("✅ ¡Archivo enviado exitosamente!")
                     st.info("💡 El servidor de GitHub ya está trabajando en segundo plano.")
                 except Exception as e:
                     st.error(f"❌ Error al comunicarse con GitHub: {e}")
-
     st.markdown("---")
     st.subheader("📥 2. Descargar Resultados")
     st.write("Haz clic aquí para comprobar el estado. El botón de descarga aparecerá mágicamente cuando el servidor termine el trabajo.")

@@ -1,17 +1,33 @@
 import io
 import streamlit as st
 import pandas as pd
-from core.scraper import procesar_excel_completo
 from core.merger import unificar_excels_docentes
 import os
+from github import Github
 
-@st.cache_resource
-def instalar_navegadores():
-    os.system("playwright install chromium")
-    os.system("playwright install-deps chromium")
+# --- INYECCIÓN PARA GITHUB ACTIONS ---
+try:
+    GH_TOKEN = st.secrets.get("GITHUB_TOKEN", None)
+    REPO_NAME = st.secrets.get("REPO_NAME", None)
+except Exception:
+    GH_TOKEN = None
+    REPO_NAME = None
 
-# Ejecutamos la instalación de forma invisible al arrancar
-instalar_navegadores()
+def subir_a_github(archivo_bytes, ruta_destino, mensaje_commit):
+    g = Github(GH_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+    try:
+        contents = repo.get_contents(ruta_destino)
+        repo.update_file(contents.path, mensaje_commit, archivo_bytes, contents.sha)
+    except Exception:
+        repo.create_file(ruta_destino, mensaje_commit, archivo_bytes)
+
+def descargar_de_github(ruta_origen):
+    g = Github(GH_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+    contents = repo.get_contents(ruta_origen)
+    return contents.decoded_content
+# -------------------------------------
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -35,7 +51,7 @@ with st.sidebar:
     3. **Evaluación IA:** Análisis curricular técnico con IA.
     """)
     st.markdown("---")
-    st.caption("🚀 Arquitectura Scalable para +1,000 Docentes | Motor Playwright + Tesseract OCR")
+    st.caption("🚀 Arquitectura Scalable para +1,000 Docentes | Motor GitHub Actions (5 Hilos)")
 
 # =====================================================================
 # CREACIÓN DE LAS 3 PESTAÑAS ESTRUCTURALES
@@ -47,73 +63,39 @@ pestaña_scraping, pestaña_unificacion, pestaña_ia = st.tabs([
 ])
 
 # =====================================================================
-# PESTAÑA 1: MOTOR DE SCRAPING SENESCYT 
+# PESTAÑA 1: MOTOR DE SCRAPING SENESCYT (VERSIÓN NUBE)
 # =====================================================================
 with pestaña_scraping:
-    st.subheader("Extracción Estructural de Títulos (3er y 4to Nivel)")
-    st.write("Sube la plantilla con las cédulas en la **Columna C (desde fila 3)**. El sistema leerá el portal gubernamental por contenedores HTML (`div.panel`) y evitará colisiones de texto.")
+    st.subheader("Extracción Estructural de Títulos (3er y 4to Nivel) - Motor CI/CD")
+    st.write("Sube la plantilla. El servidor de GitHub encenderá 5 hilos asíncronos para extraer los títulos sin consumir la memoria de tu aplicación.")
     
-    col_izq, col_der = st.columns([1, 1])
-    with col_izq:
-        archivo_scraping = st.file_uploader(
-            "📥 Subir Excel Plantilla (Con Cédulas en Col C)", 
-            type=["xlsx"], 
-            key="uplo_scraping"
-        )
-    with col_der:
-        st.markdown("#### Configuración de Ejecución")
-        ver_nav = st.checkbox("👁️ Ver navegador en tiempo (Modo Visual Slow-Mo)", value=False)
-        forzar_cache = st.checkbox("🔄 Forzar re-evaluación en web (Ignorar Caché del disco)", value=False)
-        
+    if not GH_TOKEN or not REPO_NAME:
+        st.error("⚠️ Faltan configurar GITHUB_TOKEN y REPO_NAME en los secretos de Streamlit (st.secrets). El motor de scraping remoto no funcionará.")
+    
+    archivo_scraping = st.file_uploader(
+        "📥 1. Subir Excel Plantilla (Con Cédulas en Col C)", 
+        type=["xlsx"], 
+        key="uplo_scraping"
+    )
+
     if archivo_scraping is not None:
-        st.markdown("---")
-        
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            btn_normal = st.button("🚀 Iniciar Extracción Oficial SENESCYT", key="btn_ejecutar_scraping", type="primary", use_container_width=True)
-        with col_btn2:
-            btn_reverificar = st.button("🔄 Reverificar solo 'No registra'", key="btn_reverificar", type="secondary", use_container_width=True)
-            
-        if btn_normal or btn_reverificar:
-            es_modo_reverificacion = True if btn_reverificar else False
-            
-            if es_modo_reverificacion:
-                st.info("💡 **Modo Reverificar activo:** Se saltarán instantáneamente los docentes que ya tengan títulos y solo se consultará en vivo a los pendientes ('No registra').")
-            
-            # --- CONSOLA DE LOGS EN UI ---
-            st.markdown("#### 🖥️ Consola de Ejecución en Vivo")
-            consola_ui = st.empty()
-            
-            if 'historial_logs' not in st.session_state:
-                st.session_state.historial_logs = []
-            st.session_state.historial_logs.clear()
-            
-            def registrar_log(mensaje):
-                """Añade el log al estado y actualiza el contenedor de código"""
-                st.session_state.historial_logs.append(f"> {mensaje}")
-                # Mostramos solo los últimos 15 mensajes para que no se sature la pantalla
-                consola_ui.code('\n'.join(st.session_state.historial_logs[-15:]), language='bash')
-            
-            cont_barra = st.empty()
-            barra_progreso = cont_barra.progress(0.0, text="Iniciando Chromium y Tesseract OCR...")
-            
-            def actualizar_ui(porcentaje, texto):
-                barra_progreso.progress(min(porcentaje, 1.0), text=texto)
-            
+        if st.button("🚀 Enviar al Servidor de GitHub (5 Hilos)", key="btn_ejecutar_scraping", type="primary"):
+            with st.spinner("Inyectando archivo en la cola de procesamiento..."):
+                try:
+                    subir_a_github(archivo_scraping.getvalue(), "inputs/matriz_a_procesar.xlsx", "⏳ Nuevo lote de docentes subido por Streamlit")
+                    st.success("✅ ¡Archivo enviado exitosamente!")
+                    st.info("💡 El servidor de GitHub ya está trabajando en segundo plano. Ve a la pestaña 'Actions' de tu repositorio para ver el progreso.")
+                except Exception as e:
+                    st.error(f"❌ Error al enviar el archivo a GitHub: {e}")
+
+    st.markdown("---")
+    st.subheader("📥 2. Recuperar Resultados")
+    
+    if st.button("🔄 Comprobar y Descargar Resultados", key="btn_recuperar"):
+        with st.spinner("Buscando el archivo procesado en el servidor..."):
             try:
-                # OJO: Aquí pasamos registrar_log como log_callback
-                bytes_resultado, cache_actualizada = procesar_excel_completo(
-                    archivo_bytes=archivo_scraping.getvalue(),
-                    progress_callback=actualizar_ui,
-                    log_callback=registrar_log,
-                    forzar_reevaluacion=forzar_cache,
-                    ver_navegador=ver_nav,
-                    reverificar_no_registra=es_modo_reverificacion
-                )
-                
-                cont_barra.empty()
-                st.success("✅ ¡Extracción completada con éxito! Los títulos oficiales se inyectaron en las columnas F y G.")
-                
+                bytes_resultado = descargar_de_github("outputs/matriz_procesada.xlsx")
+                st.success("✅ ¡Archivo recuperado con éxito!")
                 st.download_button(
                     label="📥 Descargar Excel Auditado (Títulos Extraídos)",
                     data=bytes_resultado,
@@ -121,15 +103,11 @@ with pestaña_scraping:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary"
                 )
-            except Exception as e:
-                cont_barra.empty()
-                st.error(f"❌ Ocurrió un error en la extracción: {str(e)}")
-                registrar_log(f"ERROR CRÍTICO: {str(e)}")
-    else:
-        st.info("👆 Sube tu archivo Excel en el recuadro superior para activar el motor de scraping.")
+            except Exception:
+                st.warning("⏳ El archivo aún no está listo o el servidor sigue procesándolo. Espera unos minutos e intenta de nuevo.")
 
 # =====================================================================
-# PESTAÑA 2: CRUCE RELACIONAL Y EXPANSIÓN DE FILAS (MERGER)
+# PESTAÑA 2: CRUCE RELACIONAL Y EXPANSIÓN DE FILAS (MERGER) - [INTACTA]
 # =====================================================================
 with pestaña_unificacion:
     st.subheader("Consolidación Relacional (Expansión de 1 a Muchos)")
@@ -181,7 +159,7 @@ with pestaña_unificacion:
         st.warning("⚠️ Debes subir **ambos** archivos Excel en los recuadros de arriba para poder realizar el cruce relacional.")
 
 # =====================================================================
-# PESTAÑA 3: CEREBRO ANALÍTICO (FASE 2 - ACTIVA)
+# PESTAÑA 3: CEREBRO ANALÍTICO (FASE 2 - ACTIVA) - [INTACTA]
 # =====================================================================
 with pestaña_ia:
     from core.evaluator import evaluar_matriz_completa_ia

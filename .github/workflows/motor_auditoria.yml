@@ -1,0 +1,43 @@
+name: Motor de Auditoría Concurrente (5 Hilos)
+
+on:
+  push:
+    paths:
+      - 'inputs/matriz_a_procesar.xlsx'
+
+permissions:
+  contents: write
+
+jobs:
+  procesar-datos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1️⃣ Clonar Repositorio
+        uses: actions/checkout@v3
+
+      - name: 2️⃣ Configurar Entorno Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 3️⃣ Instalar Servidor de OCR (Tesseract)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-spa
+
+      - name: 4️⃣ Instalar Dependencias del Proyecto
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: 5️⃣ Iniciar Pool de Concurrencia (Python)
+        run: python core/ejecutar_pipeline.py
+
+      - name: 6️⃣ Persistir Resultados en el Repositorio
+        run: |
+          git config --global user.name "Bot Auditor CI/CD"
+          git config --global user.email "bot@senescyt-pipeline.com"
+          git add outputs/matriz_procesada.xlsx historial_auditorias.json
+          git commit -m "🚀 Matriz procesada concurrentemente por GitHub Actions" || echo "No hay cambios para subir"
+          git push

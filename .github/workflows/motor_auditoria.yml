@@ -33,11 +33,13 @@ jobs:
 
       - name: 5️⃣ Iniciar Pool de Concurrencia (Python)
         run: python core/ejecutar_pipeline.py
+        continue-on-error: true # 🛡️ CLAVE: Si Python lanza error por interrupción, no mates el servidor aún.
 
       - name: 6️⃣ Persistir Resultados en el Repositorio
+        if: always() # 🛡️ CLAVE: Ejecuta este guardado final obligatoriamente, haya habido éxito o error.
         run: |
           git config --global user.name "Bot Auditor CI/CD"
           git config --global user.email "bot@senescyt-pipeline.com"
           git add outputs/matriz_procesada.xlsx historial_auditorias.json
-          git commit -m "🚀 Matriz procesada concurrentemente por GitHub Actions" || echo "No hay cambios para subir"
+          git commit -m "🚀 Matriz procesada (Checkpoint de seguridad) por GitHub Actions" || echo "No hay cambios para subir"
           git push

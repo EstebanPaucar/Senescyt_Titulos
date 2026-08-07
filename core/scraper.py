@@ -182,13 +182,20 @@ def procesar_excel_concurrente(archivo_bytes):
             futuros = {executor.submit(consultar_senescyt_web, ced, i): (fila, ced) for i, (fila, ced) in enumerate(pendientes)}
             
             for futuro in concurrent.futures.as_completed(futuros):
-                fila, ced = futuros[futuro]
-                t3, t4 = futuro.result()
-                
-                ws.cell(row=fila, column=6).value = t3
-                ws.cell(row=fila, column=7).value = t4
-                
-                cache[ced] = {"tercer_nivel": t3, "cuarto_nivel": t4}
+                try:
+                    fila, ced = futuros[futuro]
+                    t3, t4 = futuro.result() # Si hay un error crítico en el hilo, saltará aquí
+                    
+                    # Escribir en la memoria del Excel
+                    ws.cell(row=fila, column=6).value = t3
+                    ws.cell(row=fila, column=7).value = t4
+                    
+                    # 💾 CHECKPOINT: Actualizar y guardar la caché físicamente
+                    cache[ced] = {"tercer_nivel": t3, "cuarto_nivel": t4}
+                    guardar_cache(cache)
+                    
+                except Exception as e:
+                    print(f"⚠️ Error crítico procesando la fila {fila}: {e}")
         
         guardar_cache(cache)
 

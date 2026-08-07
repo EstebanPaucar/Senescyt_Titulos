@@ -82,29 +82,65 @@ with pestaña_scraping:
         if st.button("🚀 Enviar al Servidor de GitHub (5 Hilos)", key="btn_ejecutar_scraping", type="primary"):
             with st.spinner("Inyectando archivo en la cola de procesamiento..."):
                 try:
+                    # Novedad: Leemos rápido el Excel para saber cuántos docentes son
+                    df_temp = pd.read_excel(archivo_scraping)
+                    st.session_state['total_filas_a_procesar'] = len(df_temp)
+                    
                     subir_a_github(archivo_scraping.getvalue(), "inputs/matriz_a_procesar.xlsx", "⏳ Nuevo lote de docentes subido por Streamlit")
                     st.success("✅ ¡Archivo enviado exitosamente!")
-                    st.info("💡 El servidor de GitHub ya está trabajando en segundo plano. Ve a la pestaña 'Actions' de tu repositorio para ver el progreso.")
+                    st.info("💡 El servidor de GitHub ya está trabajando en segundo plano. Abajo puedes iniciar el radar para ver el progreso.")
                 except Exception as e:
                     st.error(f"❌ Error al enviar el archivo a GitHub: {e}")
 
     st.markdown("---")
-    st.subheader("📥 2. Recuperar Resultados")
+    st.subheader("📥 2. Radar de Progreso y Descarga")
+    st.write("Haz clic aquí para monitorear el avance. El sistema calculará el tiempo en base a la cantidad de docentes.")
     
-    if st.button("🔄 Comprobar y Descargar Resultados", key="btn_recuperar"):
-        with st.spinner("Buscando el archivo procesado en el servidor..."):
+    if st.button("🔄 Iniciar Barra de Progreso", key="btn_recuperar"):
+        import time
+        import math
+        
+        # Recuperamos la cantidad de docentes (o ponemos 100 por defecto si se recargó la página)
+        total_filas = st.session_state.get('total_filas_a_procesar', 100)
+        
+        # --- CÁLCULO MATEMÁTICO DEL TIEMPO ---
+        # 5 hilos procesan 5 docentes a la vez. Asumimos ~10 seg por bloque. + 45 seg que tarda GitHub en prender.
+        segundos_estimados = math.ceil((total_filas / 5) * 10) + 45 
+        intervalo_revision = 10 # Le preguntaremos a GitHub cada 10 segundos
+        pasos_totales = math.ceil(segundos_estimados / intervalo_revision)
+        
+        barra_progreso = st.progress(0.0, text="🛸 Despertando máquina virtual en GitHub Actions...")
+        
+        archivo_listo = False
+        progreso_actual = 0.0
+        incremento = 1.0 / pasos_totales
+        
+        while not archivo_listo:
             try:
+                # Intentamos descargar el archivo de GitHub
                 bytes_resultado = descargar_de_github("outputs/matriz_procesada.xlsx")
-                st.success("✅ ¡Archivo recuperado con éxito!")
+                archivo_listo = True
+                
+                # Si lo encuentra, forzamos la barra al 100%
+                barra_progreso.progress(1.0, text="✅ ¡Procesamiento al 100%! Archivo finalizado.")
+                st.success("🎉 ¡El Excel auditado está listo!")
                 st.download_button(
-                    label="📥 Descargar Excel Auditado (Títulos Extraídos)",
+                    label="📥 Descargar Excel Auditado Oficial",
                     data=bytes_resultado,
                     file_name="1_Titulos_SENESCYT_Extraidos.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary"
                 )
             except Exception:
-                st.warning("⏳ El archivo aún no está listo o el servidor sigue procesándolo. Espera unos minutos e intenta de nuevo.")
+                # Si el archivo aún no existe, GitHub sigue trabajando. Subimos la barra.
+                if progreso_actual < 0.95:
+                    progreso_actual += incremento
+                    # Nos aseguramos de que no pase del 95% matemáticamente (se queda ahí esperando el final)
+                    if progreso_actual > 0.95:
+                        progreso_actual = 0.95
+                        
+                barra_progreso.progress(progreso_actual, text=f"⏳ Procesando {total_filas} docentes simultáneamente... (Progreso estimado: {int(progreso_actual*100)}%)")
+                time.sleep(intervalo_revision)
 
 # =====================================================================
 # PESTAÑA 2: CRUCE RELACIONAL Y EXPANSIÓN DE FILAS (MERGER) - [INTACTA]

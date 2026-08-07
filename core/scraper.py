@@ -130,7 +130,7 @@ def consultar_senescyt_web(cedula, id_hilo):
                             
                             if "cuarto nivel" in txt_enc or "posgrado" in txt_enc:
                                 if titulo not in t4: t4.append(titulo)
-                            else:
+                            elif "tercer nivel" in txt_enc or "grado" in txt_enc:
                                 if titulo not in t3: t3.append(titulo)
                 
                 res_3er = " | ".join(t3) if t3 else "No registra"

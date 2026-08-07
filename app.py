@@ -13,6 +13,14 @@ except Exception:
     GH_TOKEN = None
     REPO_NAME = None
 
+def obtener_sha_archivo():
+    g = Github(GH_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+    try:
+        return repo.get_contents("outputs/matriz_procesada.xlsx").sha
+    except Exception:
+        return None
+
 def subir_a_github(archivo_bytes, ruta_destino, mensaje_commit):
     g = Github(GH_TOKEN)
     repo = g.get_repo(REPO_NAME)
@@ -82,66 +90,60 @@ with pestaña_scraping:
         if st.button("🚀 Enviar al Servidor de GitHub (5 Hilos)", key="btn_ejecutar_scraping", type="primary"):
             with st.spinner("Inyectando archivo en la cola de procesamiento..."):
                 try:
-                    # Novedad: Leemos rápido el Excel para saber cuántos docentes son
-                    df_temp = pd.read_excel(archivo_scraping)
-                    st.session_state['total_filas_a_procesar'] = len(df_temp)
+                    # 🔒 CAPTURAMOS LA HUELLA DIGITAL (SHA) DEL ARCHIVO VIEJO
+                    st.session_state['sha_anterior'] = obtener_sha_archivo()
                     
+                    # Subimos el nuevo lote a GitHub
                     subir_a_github(archivo_scraping.getvalue(), "inputs/matriz_a_procesar.xlsx", "⏳ Nuevo lote de docentes subido por Streamlit")
+                    
                     st.success("✅ ¡Archivo enviado exitosamente!")
-                    st.info("💡 El servidor de GitHub ya está trabajando en segundo plano. Abajo puedes iniciar el radar para ver el progreso.")
+                    st.info("💡 El servidor de GitHub ya está trabajando en segundo plano.")
                 except Exception as e:
-                    st.error(f"❌ Error al enviar el archivo a GitHub: {e}")
+                    st.error(f"❌ Error al comunicarse con GitHub: {e}")
 
     st.markdown("---")
-    st.subheader("📥 2. Radar de Progreso y Descarga")
-    st.write("Haz clic aquí para monitorear el avance. El sistema calculará el tiempo en base a la cantidad de docentes.")
+    st.subheader("📥 2. Descargar Resultados")
+    st.write("Haz clic aquí para comprobar el estado. El botón de descarga aparecerá mágicamente cuando el servidor termine el trabajo.")
     
-    if st.button("🔄 Iniciar Barra de Progreso", key="btn_recuperar"):
+    if st.button("🔄 Buscar Archivo Final", key="btn_recuperar"):
         import time
-        import math
         
-        # Recuperamos la cantidad de docentes (o ponemos 100 por defecto si se recargó la página)
-        total_filas = st.session_state.get('total_filas_a_procesar', 100)
+        # Recuperamos la huella vieja que guardamos en el Paso 2
+        sha_viejo = st.session_state.get('sha_anterior', 'desconocido')
         
-        # --- CÁLCULO MATEMÁTICO DEL TIEMPO ---
-        # 5 hilos procesan 5 docentes a la vez. Asumimos ~10 seg por bloque. + 45 seg que tarda GitHub en prender.
-        segundos_estimados = math.ceil((total_filas / 5) * 10) + 45 
-        intervalo_revision = 10 # Le preguntaremos a GitHub cada 10 segundos
-        pasos_totales = math.ceil(segundos_estimados / intervalo_revision)
-        
-        barra_progreso = st.progress(0.0, text="🛸 Despertando máquina virtual en GitHub Actions...")
-        
-        archivo_listo = False
-        progreso_actual = 0.0
-        incremento = 1.0 / pasos_totales
-        
-        while not archivo_listo:
-            try:
-                # Intentamos descargar el archivo de GitHub
-                bytes_resultado = descargar_de_github("outputs/matriz_procesada.xlsx")
-                archivo_listo = True
-                
-                # Si lo encuentra, forzamos la barra al 100%
-                barra_progreso.progress(1.0, text="✅ ¡Procesamiento al 100%! Archivo finalizado.")
-                st.success("🎉 ¡El Excel auditado está listo!")
-                st.download_button(
-                    label="📥 Descargar Excel Auditado Oficial",
-                    data=bytes_resultado,
-                    file_name="1_Titulos_SENESCYT_Extraidos.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    type="primary"
-                )
-            except Exception:
-                # Si el archivo aún no existe, GitHub sigue trabajando. Subimos la barra.
-                if progreso_actual < 0.95:
-                    progreso_actual += incremento
-                    # Nos aseguramos de que no pase del 95% matemáticamente (se queda ahí esperando el final)
-                    if progreso_actual > 0.95:
-                        progreso_actual = 0.95
-                        
-                barra_progreso.progress(progreso_actual, text=f"⏳ Procesando {total_filas} docentes simultáneamente... (Progreso estimado: {int(progreso_actual*100)}%)")
-                time.sleep(intervalo_revision)
-
+        with st.status("⏳ Esperando a que el servidor de GitHub termine... (Esto tomará unos minutos)", expanded=True) as status:
+            archivo_listo = False
+            
+            while not archivo_listo:
+                try:
+                    g = Github(GH_TOKEN)
+                    repo = g.get_repo(REPO_NAME)
+                    contents = repo.get_contents("outputs/matriz_procesada.xlsx")
+                    sha_actual = contents.sha
+                    
+                    # 🔒 VALIDACIÓN ESTRICTA: Si es el archivo viejo, ignóralo y sigue esperando
+                    if sha_actual == sha_viejo:
+                        raise Exception("Sigue siendo el archivo viejo.")
+                    
+                    # Si pasa de la línea anterior, significa que el archivo es NUEVO
+                    bytes_resultado = contents.decoded_content
+                    archivo_listo = True
+                    status.update(label="✅ ¡Proceso finalizado en la nube!", state="complete", expanded=False)
+                    
+                except Exception:
+                    # Espera 10 segundos en silencio y vuelve a preguntar a GitHub
+                    time.sleep(10)
+            
+            # 🎯 EL BOTÓN APARECE SOLO AQUÍ, FUERA DEL BUCLE DE ESPERA
+            st.success("🎉 ¡El Excel auditado está listo!")
+            st.download_button(
+                label="📥 Descargar Excel Auditado Oficial",
+                data=bytes_resultado,
+                file_name="1_Titulos_SENESCYT_Extraidos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary"
+            )
+            
 # =====================================================================
 # PESTAÑA 2: CRUCE RELACIONAL Y EXPANSIÓN DE FILAS (MERGER) - [INTACTA]
 # =====================================================================

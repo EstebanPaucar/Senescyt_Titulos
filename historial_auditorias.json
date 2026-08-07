@@ -15,9 +15,8 @@
         "ultima_actualizacion": "2026-07-20 01:11:39"
     },
     "1725020372": {
-        "tercer_nivel": "No registra",
-        "cuarto_nivel": "DIPLOMA SUPERIOR DE ENSEÑANZA ESPECIALIZACION VIOLONCHELO",
-        "ultima_actualizacion": "2026-07-19 23:05:14"
+        "tercer_nivel": "DIPLOMA SUPERIOR DE ENSEÑANZA ESPECIALIZACION VIOLONCHELO",
+        "cuarto_nivel": "DIPLOMA SUPERIOR DE ENSEÑANZA ESPECIALIZACION VIOLONCHELO"
     },
     "0916381775": {
         "tercer_nivel": "LICENCIADO EN CIENCIAS DE LA EDUCACION MENCION INSTRUMENTISTA PEDAGOGO EN PIANO | TECNOLOGO MUSICAL MENCION PIANO",
@@ -349,9 +348,8 @@
         "ultima_actualizacion": "2026-07-20 01:44:49"
     },
     "1758693855": {
-        "tercer_nivel": "No registra",
-        "cuarto_nivel": "MASTER UNIVERSITARIO EN COMPOSICION MUSICAL CON NUEVAS TECNOLOGIAS",
-        "ultima_actualizacion": "2026-07-20 01:45:25"
+        "tercer_nivel": "MASTER UNIVERSITARIO EN COMPOSICION MUSICAL CON NUEVAS TECNOLOGIAS",
+        "cuarto_nivel": "MASTER UNIVERSITARIO EN COMPOSICION MUSICAL CON NUEVAS TECNOLOGIAS"
     },
     "1709635591": {
         "tercer_nivel": "LICENCIADO EN MUSICA | LICENCIADO EN MUSICA PERFIL COMPOSICION",
@@ -459,9 +457,8 @@
         "ultima_actualizacion": "2026-07-20 02:01:03"
     },
     "1712205325": {
-        "tercer_nivel": "No registra",
-        "cuarto_nivel": "TEACHER´S TRAINING SPECIALIZATION PIANO",
-        "ultima_actualizacion": "2026-07-20 02:01:37"
+        "tercer_nivel": "TEACHER´S TRAINING SPECIALIZATION PIANO",
+        "cuarto_nivel": "TEACHER´S TRAINING SPECIALIZATION PIANO"
     },
     "1757190648": {
         "tercer_nivel": "INGENIERO INDUSTRIAL",
@@ -612,5 +609,9 @@
         "tercer_nivel": "INGENIERO EN DISEÑO GRAFICO EMPRESARIAL",
         "cuarto_nivel": "MAESTRIA EN LENGUAJES ARTISTICOS COMBINADOS",
         "ultima_actualizacion": "2026-07-20 09:23:28"
+    },
+    "1755904800": {
+        "tercer_nivel": "No registra",
+        "cuarto_nivel": "No registra"
     }
 }
